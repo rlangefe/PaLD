@@ -7,6 +7,9 @@ To run the Python code here, please ensure you have installed:
 - Pandas
 - TQDM
 - CuPy
+- Matplotlib
+- Seaborn
+- Scikit-learn
 
 In order to run the GPU code, ensure that you have a working NVIDIA GPU.
 
