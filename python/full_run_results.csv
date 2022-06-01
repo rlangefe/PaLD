@@ -1,0 +1,1 @@
+mean1,std1,n1,dim1,dist1,mean2,std2,n2,dim2,dist2,time_pald_cupy_multistream,time_pald_cupy_loop,bound_pald_cupy_multistream,bound_pald_cupy_loop

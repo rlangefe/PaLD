@@ -1,0 +1,128 @@
+pald<-function(X,dist=FALSE,scale=FALSE,show.cont=TRUE,greycol="grey80",show.plot=TRUE,bet=1,
+               gt=NULL,lw=1,tit=FALSE,L=NULL,lab=FALSE,...) {
+  if (dist==FALSE) {
+    if (scale==TRUE) { X<-scale(X,scale=TRUE)[,]}
+    D<-dist(X) } else D<-X
+    D<-as.matrix(D)
+    if (length(lab)==1){
+      if (lab==TRUE) {laby<-rownames(D)}
+      else {laby<-rep("",dim(D)[1])} }
+            {laby<-lab}
+   
+    getcontmat<-function(D, b=0,h=.5,bet=1,cr=1:dim(D)[1]){
+      D<-round(D,15)
+      L<-NULL
+      n=dim(D)[1]
+      A3=matrix(0,n,n)
+      for(x in 1:(n-1)){
+        for(y in (x+1):n){
+          dx=D[x,]; dxt=D[,x]
+          dy=D[y,]; dyt=D[,y]
+          Uxy=(which((dx<=bet*D[x,y]) | (dy<=bet*D[y,x]))) #the reaching set
+          wx<-1*(dx[Uxy]<dy[Uxy])+h*((dx[Uxy]==dy[Uxy]))
+          wy<-1*(dy[Uxy]<dx[Uxy])+h*((dx[Uxy]==dy[Uxy]))
+          A3[x,Uxy]=A3[x,Uxy]+1/(length(Uxy))*wx
+          A3[y,Uxy]=A3[y,Uxy]+1/(length(Uxy))*wy
+        }
+      }
+      diag(A3)<-diag(A3)+b
+      rownames(A3)=1:n
+      colnames(A3)=1:n
+      return(A3/(n-(b==0)))
+    }
+   
+    if (is.null(rownames(D)[1])) {rownames(D)<-1:dim(D)[1]}
+    nm<-rownames(D)
+    B<-getcontmat(D,h=.5,b=0,bet=bet)
+    q<-apply(B,1,sum)
+    names(q)<-rownames(D)
+    RU<-mean(diag(B))/2
+   
+    A<-B
+    ASym<-pmin(A, t(A))
+   
+    color<-c( brewer.pal(n = 8, name = "Dark2"), brewer.pal(n=8, name="Set2"))
+   
+    rownames(B)<-rownames(D);colnames(B)<-colnames(D)
+   
+    diag(ASym)<-1
+    g<-graph.adjacency(ASym,weighted=TRUE,mode="undirected")
+    g<-simplify(g)
+    #V(g)$name<-rownames(D)
+    w<-E(g)$weight
+    E<-get.edgelist(g)
+    E<-E[order(w), ]
+    w<-w[order(w)]
+   
+   
+    g<-graph.edgelist(E, directed=FALSE)
+    g<-g+setdiff(as.character(1:dim(D)[1]),V(g)$name)
+   
+    E(g)$weight<-w
+   
+    Acut<-get.adjacency(g,attr="weight")
+    Acut[Acut < RU]<-0
+    diag(Acut)<-1
+    gcut<-graph.adjacency(Acut,weighted=TRUE,mode="undirected")
+    gcut<-simplify(gcut)
+    e<-as.numeric(get.edgelist(g)[, 1])
+    u<-igraph::clusters(gcut)$membership
+    u<-u[order(as.numeric(names(u)))]
+    edge_colors<-color[u[e]]
+    edge_colors[E(g)$weight<RU]<-"white"
+    if(show.cont){
+      edge_colors[E(g)$weight<RU]<-greycol}
+   
+   
+    edge_widths<-E(g)$weight
+    edge_widths[edge_widths<RU]<-edge_widths[edge_widths<RU]/20
+   
+    lab<-laby[as.numeric(V(g)$name)]
+    V(g)$lab<-lab
+    V(gcut)$lab<-lab
+    V(gcut)$clusters<-igraph::clusters(gcut)$membership
+    if (is.null(L)) {L<-layout_with_kk(g)} else {L<-L[as.numeric(V(g)$name),]}
+    if(show.plot){
+      plot(g,   ylim=c(-1, 1),xlim=c(-1, 1),...,
+           vertex.size=4, vertex.label.cex=1,
+           vertex.color=color[igraph::clusters(gcut)$membership],
+           #           vertex.label.color=color[igraph::clusters(gcut)$membership],  
+           vertex.label.color="black",
+           vertex.label=lab,
+           vertex.label.dist = 1, edge.width=lw*100*(edge_widths),
+           edge.color=edge_colors, asp=0,layout=L,
+           main="")
+      if ((!dist)&(tit))
+      {title(paste(abbreviate(colnames(X)),collapse=","))}
+    }
+    if(!is.null(gt[1])){
+      plot(g,   ylim=c(-1, 1),xlim=c(-1, 1),...,
+           vertex.size=4, vertex.label.cex=1.2,
+           #           vertex.color=color[igraph::clusters(gcut)$membership],
+           #color[igraph::clusters(gcut)$membership],
+           vertex.label.color=gt[as.numeric(V(g)$name)],
+           vertex.color=gt[as.numeric(V(g)$name)],
+           #vertex.label.color="black",
+           vertex.label=lab[as.numeric(V(g)$name)],
+           vertex.label.dist = 1, edge.width=lw*100*(edge_widths),
+           edge.color=edge_colors, asp=0,layout=L)
+      if ((!dist)&(tit))
+      {title(paste(abbreviate(colnames(X)),collapse=","))}
+      V(g)$gt<-gt[as.numeric(V(g)$name)]
+    }
+    Lemb<-L[as.numeric(V(g)$name),]
+    V(g)$name<-rownames(D)[as.numeric(V(g)$name)]
+   
+   
+    rownames(ASym)<-rownames(B);colnames(ASym)<-colnames(B)
+   
+    cl<-igraph::clusters(gcut)$membership
+    names(cl)<-rownames(D)[as.numeric(names(cl))]
+    cl<-cl[sapply(rownames(D),function(c) which(names(cl)==c))]
+   
+    V(gcut)$name<-rownames(D)[as.numeric(V(gcut)$name)]
+   
+    list(C=B,Cmin=ASym,g=g,g2=gcut,bound=RU,D=D,clusters=(cl),
+         isolated=setdiff(rownames(D),V(g)$name),layout=L,Lemb=Lemb,depths=(q))
+   
+}
